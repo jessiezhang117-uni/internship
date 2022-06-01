@@ -1,0 +1,58 @@
+<mujoco model="braccio">
+    <compiler angle="radian" meshdir="./braccio_arm_stl/" />
+    <size njmax="500" nconmax="100" />
+    <asset>
+        <mesh name="braccio_base" file="braccio_base.stl" scale="0.001 0.001 0.001" />
+        <mesh name="braccio_shoulder" file="braccio_shoulder.stl" scale="0.001 0.001 0.001" />
+        <mesh name="braccio_elbow" file="braccio_elbow.stl" scale="0.001 0.001 0.001" />
+        <mesh name="braccio_wrist_pitch" file="braccio_wrist_pitch.stl" scale="0.001 0.001 0.001" />
+        <mesh name="braccio_wrist_roll" file="braccio_wrist_roll.stl" scale="0.001 0.001 0.001" />
+        <mesh name="braccio_left_gripper" file="braccio_left_gripper.stl" scale="0.001 0.001 0.001" />
+        <mesh name="braccio_right_gripper" file="braccio_right_gripper.stl" scale="0.001 0.001 0.001" />
+    </asset>
+    <worldbody>
+        <geom size="0.053 0.005" type="cylinder" contype="0" conaffinity="0" group="1" rgba="0 0 0 0.5" />
+        <body name="braccio_base_link" pos="0 0 0">
+            <inertial pos="0 0.004 0" quat="-0.500002 0.499998 0.500002 0.499998" mass="2" diaginertia="0.0144444 0.0144444 0.0144444" />
+            <joint name="base_joint" pos="0 0 0" axis="0 0 -1" limited="true" range="0 3.1416" />
+            <geom pos="0 0.004 0" quat="-3.67321e-06 0 0 1" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.57 0.17 0 1" mesh="braccio_base" />
+            <geom pos="0 0.004 0" quat="-3.67321e-06 0 0 1" type="mesh" rgba="0.57 0.17 0 1" mesh="braccio_base" />
+            <body name="shoulder_link" pos="0 -0.002 0.072" quat="0.707105 -0.707108 0 0">
+                <inertial pos="-0.0045 0.0055 -0.026" mass="0.1" diaginertia="0.000348958 0.000348958 3.125e-05" />
+                <joint name="shoulder_joint" pos="0 0 0" axis="1 0 0" limited="true" range="0.2618 2.8798" />
+                <geom pos="-0.0045 0.0055 -0.026" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.57 0.17 0 1" mesh="braccio_shoulder" />
+                <geom pos="-0.0045 0.0055 -0.026" type="mesh" rgba="0.57 0.17 0 1" mesh="braccio_shoulder" />
+                <body name="elbow_link" pos="0 0 0.125" quat="0.707105 -0.707108 0 0">
+                    <inertial pos="-0.0045 0.005 -0.025" mass="0.1" diaginertia="0.000348958 0.000348958 3.125e-05" />
+                    <joint name="elbow_joint" pos="0 0 0" axis="1 0 0" limited="true" range="0 3.1416" />
+                    <geom pos="-0.0045 0.005 -0.025" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.57 0.17 0 1" mesh="braccio_elbow" />
+                    <geom pos="-0.0045 0.005 -0.025" type="mesh" rgba="0.57 0.17 0 1" mesh="braccio_elbow" />
+                    <body name="wrist_pitch_link" pos="0 0 0.125" quat="0.707105 -0.707108 0 0">
+                        <inertial pos="0.003 -0.0004 -0.024" mass="0.1" diaginertia="0.000348958 0.000348958 3.125e-05" />
+                        <joint name="wrist_pitch_joint" pos="0 0 0" axis="1 0 0" limited="true" range="0 3.1416" />
+                        <geom pos="0.003 -0.0004 -0.024" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.57 0.17 0 1" mesh="braccio_wrist_pitch" />
+                        <geom pos="0.003 -0.0004 -0.024" type="mesh" rgba="0.57 0.17 0 1" mesh="braccio_wrist_pitch" />
+                        <body name="wrist_roll_link" pos="0 0 0.06" quat="0.707105 0 0 0.707108">
+                            <inertial pos="0.006 0 0" mass="0.1" diaginertia="0.000348958 0.000348958 3.125e-05" />
+                            <joint name="wrist_roll_joint" pos="0 0 0" axis="0 0 -1" limited="true" range="0 3.1416" />
+                            <geom pos="0.006 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.8 0.8 0.8 1" mesh="braccio_wrist_roll" />
+                            <geom pos="0.006 0 0" type="mesh" rgba="0.8 0.8 0.8 1" mesh="braccio_wrist_roll" />
+                            <body name="right_gripper_link" pos="0.01 0 0.03" quat="0.989016 0 -0.147806 0">
+                                <inertial pos="0 -0.012 0.01" quat="0.707105 0 0.707108 0" mass="0.1" diaginertia="0.000348958 0.000348958 3.125e-05" />
+                                <joint name="gripper_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="0.175 1.2741" />
+                                <geom pos="0 -0.012 0.01" quat="0.707105 0 0.707108 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.8 0.8 0.8 1" mesh="braccio_right_gripper" />
+                                <geom pos="0 -0.012 0.01" quat="0.707105 0 0.707108 0" type="mesh" rgba="0.8 0.8 0.8 1" mesh="braccio_right_gripper" />
+                            </body>
+                            <body name="left_gripper_link" pos="-0.01 0 0.03" quat="-0.14781 0 0.989016 0">
+                                <inertial pos="0 -0.012 0" quat="0.707105 0 0.707108 0" mass="0.1" diaginertia="0.000348958 0.000348958 3.125e-05" />
+                                <joint name="sub_gripper_joint" pos="0 0 0" axis="0 1 0" limited="true" range="1.2741 2.3732" />
+                                <geom pos="0 -0.012 0" quat="0.707105 0 0.707108 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.8 0.8 0.8 1" mesh="braccio_left_gripper" />
+                                <geom pos="0 -0.012 0" quat="0.707105 0 0.707108 0" type="mesh" rgba="0.8 0.8 0.8 1" mesh="braccio_left_gripper" />
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+</mujoco>
