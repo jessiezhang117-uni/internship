@@ -55,4 +55,13 @@
             </body>
         </body>
     </worldbody>
+    <actuator>
+        <motor name='base_joint_T' joint='base_joint'/> 
+        <motor name='shoulder_joint"_T' joint='shoulder_joint'/>
+        <motor name='elbow_joint_T' joint='elbow_joint'/>
+        <motor name='wrist_pitch_joint_T' joint='wrist_pitch_joint'/>  
+        <motor name='wrist_roll_joint_T' joint='wrist_roll_joint'/>
+        <motor name='gripper_joint_T' joint='gripper_joint'/>
+        <motor name='sub_gripper_joint_T' joint='sub_gripper_joint'/>
+    </actuator>
 </mujoco>
