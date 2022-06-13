@@ -54,6 +54,14 @@
                 </body>
             </body>
         </body>
+    <body name="object" pos="0.01 0.28 0">
+        <joint type="free" damping="0.007" name="free_joint_0" />
+        <geom name="object" pos="0 0.01 0.02" rgba="0.3 0.9 0.2 1" size="0.01" type="sphere" />
+    </body>
+    <body name="pick_box" >
+            <geom size=".05 .05 .03" pos ="0 0.3 0" type="box" rgba="0.6 0.6 0.6 0.8 "/>
+            <inertial pos="0 0 0" mass="100" diaginertia="0 0 0" />
+    </body>
     </worldbody>
     <actuator>
         <motor name='base_joint_T' joint='base_joint'/> 

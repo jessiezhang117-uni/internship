@@ -1,13 +1,14 @@
 import os, inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-os.sys.path.insert(0,currentdir)
 
 import gym
 from gym import spaces
 from gym.utils import seeding
+from gym.envs.mujoco import mujoco_env
+
 import numpy as np
 import time
 import mujoco_py as mp
+
 import random
 import braccio_arm
 

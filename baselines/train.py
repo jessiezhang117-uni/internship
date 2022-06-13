@@ -34,7 +34,7 @@ n_steps = 0
 
 
 if ENVIRONMENT == 'possensor':
-  env = tm700_possensor_gym(renders=RENDERS, isDiscrete=DISCRETE)
+  env = braccio_arm_possensor_gym(renders=RENDERS, isDiscrete=DISCRETE)
   env = Monitor(env, os.path.join(log_dir, 'monitor.csv'), allow_early_resets=True)
 
 if MODEL == 'DQN':
