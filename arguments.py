@@ -1,33 +1,4 @@
-# from __future__ import absolute_import
-# import argparse
-
-
-# def arg_parse():
-#     parser = argparse.ArgumentParser(description='Short Project Grasping arm with Reinforcement Learning')
-
-#     # Datasets parameters
-#     parser.add_argument('--model_dir', type=str, default='./roboticgrasper/log',help="place where it saves model")
-
-#     parser.add_argument('--random_seed', type=float, default=5,help="random seed")
-#     parser.add_argument('--gym_env', type=str, default='possensor',help="Gym Environment: either possensor, rgbd, rgb, rgbdsparse, multi")
-#     parser.add_argument('--algorithm', type=str, default='DQN',help="currently DQN and DDPG supported. If DDPG, but then the Gym environment has to be non-discrete")
-#     parser.add_argument('--discrete', type=bool, default=True,help="if DQN discrete is true, if DDPG it is false")
-
-#     parser.add_argument('--lr', type=float, default=0.0001,help="learning rate")
-#     parser.add_argument('--discount', type=float, default=0.99,help="discount factor")
-#     parser.add_argument('--renders', type=bool, default=True,help="discount factor")
-#     parser.add_argument('--timesteps', type=int, default=10000,help="time steps")
-#     parser.add_argument('--logdir', type=str, default='logdir_DQN_rgbd_07-02/best_model.zip',help="path to stored files")
-
-
-
-
-#     args = parser.parse_args()
-
-#     return args
-
 import argparse
-#argparse的库可以在命令行中传入参数并让程序运行
 """
 Here are the param for the training
 
@@ -127,8 +98,7 @@ class Args:
         self.cuda = False
         self.num_rollouts_per_mpi = 2
         self.add_demo = True  # add demo data or not
-        self.demo_name="bmirobot_1000_push_demo.npz"
-        #self.demo_name="bmirobot_1000_pick_demo.npz"
-        self.train_type = "push" #or "pick"
+        self.demo_name="barobot_1000_push_demo.npz"
+        self.train_type = "push" 
         self.Use_GUI =True  #GUI is for visualizing the training process
-        self.env_name = 'bmirobot_'+str(self.train_type)+" seed"+str( self.seed )
+        self.env_name = 'barobot_'+str(self.train_type)+" seed"+str( self.seed )
