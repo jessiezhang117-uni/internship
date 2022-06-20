@@ -132,7 +132,15 @@ class braccio_arm_v0:
                                 velocityGain=1)
     
     def applyAction(self, motorCommands): #4 actions
-        
+        limit_x=[-1,1]
+        limit_y=[-1,1]
+        limit_z=[0,1]
+        def clip_val(val,limit):
+            if val<limit[0]:
+                return limit[0]
+            if val>limit[1]:
+                return limit[1]
+            return val
         if (self.useInverseKinematics):
 
             dx = motorCommands[0]
@@ -143,9 +151,9 @@ class braccio_arm_v0:
             state = p.getLinkState(self.baUid, self.baEndEffectorIndex) # returns 1. center of mass cartesian coordinates, 2. rotation around center of mass in quaternion
             actualEndEffectorPos = state[4] #world position of the link
 
-            self.endEffectorPos[0] = actualEndEffectorPos[0] + dx
-            self.endEffectorPos[1] =  actualEndEffectorPos[1] +  dy
-            self.endEffectorPos[2] = actualEndEffectorPos[2] +  dz
+            self.endEffectorPos[0] = clip_val(actualEndEffectorPos[0] + dx,limit_x)
+            self.endEffectorPos[1] =  clip_val(actualEndEffectorPos[1] +  dy,limit_y)
+            self.endEffectorPos[2] = clip_val(actualEndEffectorPos[2] +  dz,limit_z)
             
             pos = self.endEffectorPos
             orn = [0, 0, 0]
@@ -171,12 +179,14 @@ class braccio_arm_v0:
                           self.baFingerIndexL,
                           p.POSITION_CONTROL,
                           targetPosition=motorCommand+left_hand_joint_now,
+                          targetVelocity=0,
                           force=self.fingerTipForce)
 
         p.setJointMotorControl2(self.baUid,
                           self.baFingerIndexR,
                           p.POSITION_CONTROL,
                           targetPosition=motorCommand+right_hand_joint_now,
+                          targetVelocity=0,
                           force=self.fingerTipForce)
 
     def grasping(self):
@@ -198,7 +208,7 @@ if __name__ == '__main__':
     physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
     braccio_arm_test = braccio_arm_v0()
     p.setGravity(0,0,-10)
-    #braccio_arm_test.applyAction([0.5, 0.8, 0.2, 1.2570])
+    #braccio_arm_test.applyAction([-0.5, -0.8, 0.2, 1.2570])
     #braccio_arm_test.grasping()
     #braccio_arm_test.get_to_place([0.0,0.5,0.0])
     for i in range (10000):

@@ -1,29 +1,27 @@
-from environment.braccio_arm_Gym import braccio_arm_possensor_gym
+from environment.braccio_arm_gym import barobotGymEnv
 import numpy as np
-from stable_baselines import DQN, DDPG
-from baselines.helpers import savemodel
+from stable_baselines3 import DQN, DDPG
+from utils.helpers import savemodel
 from datetime import date
 import time
-import baselines.parser as parser
-from stable_baselines.results_plotter import load_results, ts2xy
-from stable_baselines.bench import Monitor
-from stable_baselines.common import set_global_seeds
+import parser
+from stable_baselines3.common.results_plotter import load_results, ts2xy
+from stable_baselines3.common.monitor import Monitor
+#from stable_baselines3.common import set_global_seeds
 import matplotlib.pyplot as plt
 import os
 
-######################### PARAMETERS
+######################### PARAMETERSssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
 
 
 args = parser.arg_parse()
-set_global_seeds(args.random_seed)
+#set_global_seeds(args.random_seed)
 start = time.time()
-ENVIRONMENT = args.gym_env
 MODEL = args.algorithm
 DISCRETE = args.discrete
 DATE = date.today().strftime("%d-%m")
-# DATE = str(time.time())
 RENDERS = True
-log_dir = ("./logdir_segmentation_%s_%s_%s/") % (MODEL, ENVIRONMENT, DATE)
+log_dir = ("./logdir_segmentation_%s_%s_%s/") % (MODEL,DATE)
 print('Logfiles saved under:', log_dir)
 os.makedirs(log_dir, exist_ok=True)
 
@@ -33,16 +31,16 @@ n_steps = 0
 ################ MODEL AND GYM ENVIRONMENT
 
 
-if ENVIRONMENT == 'possensor':
-  env = braccio_arm_possensor_gym(renders=RENDERS, isDiscrete=DISCRETE)
-  env = Monitor(env, os.path.join(log_dir, 'monitor.csv'), allow_early_resets=True)
+
+env = barobotGymEnv(renders=RENDERS, isDiscrete=DISCRETE)
+env = Monitor(env, os.path.join(log_dir, 'monitor.csv'), allow_early_resets=True)
 
 if MODEL == 'DQN':
-  from stable_baselines.deepq.policies import LnCnnPolicy, MlpPolicy
+    from stable_baselines3.dqn import CnnPolicy, MlpPolicy
 
 
-  if ENVIRONMENT in 'possensor':
-      model = DQN(MlpPolicy, env, verbose=1, tensorboard_log=(log_dir + "tensorboard_%s_%s_%s/") % (MODEL, ENVIRONMENT, DATE) ,
+
+    model = DQN("MlpPolicy", env, verbose=1, tensorboard_log=(log_dir + "tensorboard_%s_%s_%s/") % (MODEL,DATE) ,
               gamma=0.99, learning_rate=0.0005, buffer_size=50000, exploration_fraction=0.1, exploration_final_eps=0.02,
                train_freq=1, batch_size=32, double_q=True, learning_starts=1000,
               target_network_update_freq=500, prioritized_replay=True, prioritized_replay_alpha=0.6,
@@ -51,10 +49,9 @@ if MODEL == 'DQN':
               policy_kwargs=None, full_tensorboard_log=False)
 
 if MODEL == 'DDPG':
-  from stable_baselines.ddpg.policies import LnCnnPolicy
-  from stable_baselines.ddpg import AdaptiveParamNoiseSpec
-  param_noise = AdaptiveParamNoiseSpec(initial_stddev=0.1, desired_action_stddev=0.1)
-  model = DDPG(LnCnnPolicy, env, verbose=1, random_exploration=0.1,tensorboard_log=(log_dir + "tensorboard_%s_%s_%s/") % (MODEL, ENVIRONMENT, DATE) )
+  #from stable_baselines.ddpg import AdaptiveParamNoiseSpec
+  #param_noise = AdaptiveParamNoiseSpec(initial_stddev=0.1, desired_action_stddev=0.1)
+  model = DDPG("CnnPolicy", env, verbose=1, random_exploration=0.1,tensorboard_log=(log_dir + "tensorboard_%s_%s_%s/") % (MODEL, DATE) )
 
 
 ################ CALLBACK FCTS
@@ -128,7 +125,7 @@ def plotting_callback(_locals, _globals):
         callback_vars["plot"][-1].canvas.draw()
 
 
-def compose_callback(*callback_funcs): # takes a list of functions, and returns the composed function.
+def compose_callbaclnk(*callback_funcs): # takes a list of functions, and returns the composed function.
     def _callback(_locals, _globals):
         continue_training = True
         for cb_func in callback_funcs:
