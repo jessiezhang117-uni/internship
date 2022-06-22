@@ -3,17 +3,18 @@ import gym
 import os
 import math
 import pybullet as p
-from braccio_arm import braccio_arm_v0
+import braccio_arm
 from gym.utils import seeding
 import pybullet_data
 import random
 import  time
 from gym import spaces
+from arguments import Args
 
 largeValObservation = 100
 
-RENDER_HEIGHT = 720
-RENDER_WIDTH = 960
+# RENDER_HEIGHT = 720
+# RENDER_WIDTH = 960
 
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
@@ -24,7 +25,7 @@ class barobotGymEnv(gym.Env):
         self, 
         n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold,reward_type,renders=False
+        distance_threshold,reward_type
     ):
         """Initializes a new Fetch environment.
 
@@ -42,6 +43,7 @@ class barobotGymEnv(gym.Env):
             initial_qpos (dict):定义初始配置的联合名称和值的字典
             reward_type ('sparse' or 'dense'):奖励类型，如稀疏或密集
         """
+        IS_USEGUI = Args().Use_GUI
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
         self.has_object = has_object
@@ -54,36 +56,41 @@ class barobotGymEnv(gym.Env):
         self.n_substeps=n_substeps
         self.n_actions=4
         self.blockUid = -1
-        self.renders = renders
         # self.initial_qpos=initial_qpos
         self._urdfRoot = pybullet_data.getDataPath()
-        self._cam_dist = 1.3
-        self._cam_yaw = 180
-        self._cam_pitch = -40
-
-        self._p = p
-        if self.renders:
-            cid = p.connect(p.SHARED_MEMORY)
-            if (cid < 0):
-                cid = p.connect(p.GUI)
-            p.resetDebugVisualizerCamera(1.3, 180, -41, [0.52, -0.2, -0.33])
+        
+        if IS_USEGUI:
+            self.physics = p.connect(p.GUI)
         else:
-            p.connect(p.DIRECT)
+            self.physics = p.connect(p.DIRECT)
 
         self.seed()
-        observationDim = len(self.get_obs())
-        observation_high = np.array([largeValObservation] * observationDim)
+        # observationDim = len(self._get_obs())
+        # observation_high = np.array([largeValObservation] * observationDim)
         #加载机器人模型
-        self._barobot = braccio_arm_v0()
+        self._barobot = braccio_arm.braccio_arm_v0()
         self._timeStep= 1. / 240.
         action_dim = 4
         self._action_bound = 0.5
         # 这里的action和obs space 的low and high 可能需要再次考虑
-        action_high = np.array([self._action_bound] * action_dim)
-        self.action_space = spaces.Box(-action_high, action_high)
-        self.observation_space = spaces.Box(-observation_high, observation_high)
+        # action_high = np.array([self._action_bound] * action_dim)
+        # self.action_space = spaces.Box(-action_high, action_high)
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(action_dim,), dtype=np.float32)
+        # self.observation_space = spaces.Box(-observation_high, observation_high)
         #重置环境
-        self.reset()
+        # self.reset()
+        obs = self.reset()  # required for init; seed can be changed later
+        observation_shape = obs["observation"].shape
+        self.observation_space = spaces.Box(-10.0, 10.0, shape=observation_shape, dtype=np.float32)
+        # achieved_goal_shape = obs["achieved_goal"].shape
+        # desired_goal_shape = obs["achieved_goal"].shape
+        # self.observation_space = gym.spaces.Dict(
+        #     dict(
+        #         observation=gym.spaces.Box(-10.0, 10.0, shape=observation_shape, dtype=np.float32),
+        #         desired_goal=gym.spaces.Box(-10.0, 10.0, shape=achieved_goal_shape, dtype=np.float32),
+        #         achieved_goal=gym.spaces.Box(-10.0, 10.0, shape=desired_goal_shape, dtype=np.float32),
+        #     )
+        # )
         # GoalEnv methods
     # ----------------------------
 
@@ -97,15 +104,16 @@ class barobotGymEnv(gym.Env):
 
     def step(self, action):
         action = np.clip(action,-0.5,0.5)
-        action[3]=0
+        if p.getCLosetPoints(self._barobot.baUid,self.blockUid,0.0001):
+            action[3]=-1
+        self._set_action(action)
         # if (p.getClosestPoints(self._bmirobot.bmirobotid, self.blockUid, 0.0001)): #如果臂和块足够靠近，可以锁死手爪
         #     action[3]=-1
-        self.set_action(action)
         # print(action[3])
         #一个动作执行20个仿真步
         for _ in range(self.n_substeps):
             p.stepSimulation()
-        obs = self.get_obs()
+        obs = self._get_obs()
         done = False
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
@@ -154,14 +162,14 @@ class barobotGymEnv(gym.Env):
         self.goal=np.array([xpos_target,ypos_target,zpos_target])
         p.setGravity(0, 0, -10)
         self._envStepCounter = 0
-        obs = self.get_obs()
+        obs = self._get_obs()
         self._observation = obs
         return self._observation
 
-    def set_action(self, action):
+    def _set_action(self, action):
         self._barobot.applyAction(action)
 
-    def get_obs(self):
+    def _get_obs(self):
         # 关于机械臂的状态观察，可以从以下几个维度进行考虑
         # 末端位置、夹持器状态位置、物体位置、物体姿态、  物体相对末端位置、物体线速度、物体角速度、末端速度、物体相对末端线速度
         # 末端位置 3vec 及速度
@@ -234,44 +242,14 @@ class barobotGymEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def is_success(self, achieved_goal, desired_goal):
+    def _is_success(self, achieved_goal, desired_goal):
         d = goal_distance(achieved_goal, desired_goal)
         return (d < self.distance_threshold).astype(np.float32)
 
-    def render(self, mode="rgb_array", close=False):
-        if mode != "rgb_array":
-            return np.array([])
-
-        base_pos, orn = self._p.getBasePositionAndOrientation(self._barobot.baUid)
-        view_matrix = self._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=base_pos,
-                                                            distance=self._cam_dist,
-                                                            yaw=self._cam_yaw,
-                                                            pitch=self._cam_pitch,
-                                                            roll=0,
-                                                            upAxisIndex=2)
-        proj_matrix = self._p.computeProjectionMatrixFOV(fov=60,
-                                                     aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-                                                     nearVal=0.1,
-                                                     farVal=100.0)
-        (_, _, px, _, _) = self._p.getCameraImage(width=RENDER_WIDTH,
-                                              height=RENDER_HEIGHT,
-                                              viewMatrix=view_matrix,
-                                              projectionMatrix=proj_matrix,
-                                              renderer=self._p.ER_BULLET_HARDWARE_OPENGL)
-        #renderer=self._p.ER_TINY_RENDERER)
-
-        rgb_array = np.array(px, dtype=np.uint8)
-        rgb_array = np.reshape(rgb_array, (RENDER_HEIGHT, RENDER_WIDTH, 4))
-
-        rgb_array = rgb_array[:, :, :3]
-        return rgb_array
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     from stable_baselines3.common.env_checker import check_env 
-    
-    env = barobotGymEnv(
-            has_object=True, block_gripper=False, n_substeps=20,
+    env = barobotGymEnv(has_object=True, block_gripper=False, n_substeps=20,
             gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
-            reward_type="sparse",renders=False)
+            reward_type="sparse")
     check_env(env)

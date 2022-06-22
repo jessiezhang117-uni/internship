@@ -6,10 +6,6 @@ os.sys.path.insert(0, parentdir)
 import pybullet as p
 import time
 import pybullet_data
-import numpy as np
-import copy
-import math
-import random
 import braccio_arm_inverse_kinematics as inverse
 
 class braccio_arm_v0:
