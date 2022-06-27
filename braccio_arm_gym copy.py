@@ -73,24 +73,26 @@ class barobotGymEnv(gym.Env):
         action_dim = 4
         self._action_bound = 0.5
         # 这里的action和obs space 的low and high 可能需要再次考虑
-        # action_high = np.array([self._action_bound] * action_dim)
-        # self.action_space = spaces.Box(-action_high, action_high)
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(action_dim,), dtype=np.float32)
+        action_high = np.array([self._action_bound] * action_dim)
+        self.action_space = spaces.Box(-action_high, action_high)
+        #self.action_space = spaces.Box(-1.0, 1.0, shape=(action_dim,), dtype=np.float32)
         # self.observation_space = spaces.Box(-observation_high, observation_high)
         #重置环境
         # self.reset()
         obs = self.reset()  # required for init; seed can be changed later
-        observation_shape = obs["observation"].shape
-        # self.observation_space = spaces.Box(-10.0, 10.0, shape=observation_shape, dtype=np.float32)
-        achieved_goal_shape = obs["achieved_goal"].shape
-        desired_goal_shape = obs["achieved_goal"].shape
-        self.observation_space = gym.spaces.Dict(
-            dict(
-                observation=gym.spaces.Box(-np.inf, np.inf, shape=observation_shape, dtype=np.float32),
-                desired_goal=gym.spaces.Box(-np.inf, np.inf, shape=achieved_goal_shape, dtype=np.float32),
-                achieved_goal=gym.spaces.Box(-np.inf, np.inf, shape=desired_goal_shape, dtype=np.float32),
-            )
-        )
+        observationDim = len(self._get_obs())
+        observation_high = np.array([largeValObservation] * observationDim)
+        self.observation_space = spaces.Box(-observation_high, observation_high)
+
+        # achieved_goal_shape = obs["achieved_goal"].shape
+        # desired_goal_shape = obs["achieved_goal"].shape
+        # self.observation_space = gym.spaces.Dict(
+        #     dict(
+        #         observation=gym.spaces.Box(-np.inf, np.inf, shape=observation_shape, dtype=np.float32),
+        #         desired_goal=gym.spaces.Box(-np.inf, np.inf, shape=achieved_goal_shape, dtype=np.float32),
+        #         achieved_goal=gym.spaces.Box(-np.inf, np.inf, shape=desired_goal_shape, dtype=np.float32),
+        #     )
+        # )
         # GoalEnv methods
     # ----------------------------
 
@@ -164,77 +166,43 @@ class barobotGymEnv(gym.Env):
         self._envStepCounter = 0
         obs = self._get_obs()
         self._observation = obs
-        return self._observation
+        return np.array(self._observation)
 
     def _set_action(self, action):
         self._barobot.applyAction(action)
 
     def _get_obs(self):
-        # 关于机械臂的状态观察，可以从以下几个维度进行考虑
-        # 末端位置、夹持器状态位置、物体位置、物体姿态、  物体相对末端位置、物体线速度、物体角速度、末端速度、物体相对末端线速度
-        # 末端位置 3vec 及速度
-        end_pos = np.array(self._barobot.getObservation())
-        end_pos = end_pos[:3]
-        # 夹持器位置、姿姿 vec3 *2  ，可能需要重新考虑一下末端位置和grip的关系
-        gripperState = p.getLinkState(self._barobot.baUid, self._barobot.baGripperIndex,
-                                      computeLinkVelocity=1)
-        gripperPos = np.array(gripperState[4])
-        gripperOrn_temp = np.array(gripperState[5])
-        gripper_linear_Velocity = np.array(gripperState[6])
-        gripper_angular_Velocity = np.array(gripperState[7])
-        # 把四元数转换成欧拉角，使数据都是三维的
-        gripperOrn = p.getEulerFromQuaternion(gripperOrn_temp)
-        gripperOrn = np.array(gripperOrn)
-        # 物体位置、姿态
-        blockPos, blockOrn_temp = p.getBasePositionAndOrientation(self.blockUid)
-        blockPos = np.array(blockPos)
-        blockOrn = p.getEulerFromQuaternion(blockOrn_temp)
-        blockOrn = np.array(blockOrn)
-        # 物体相对位置 vec *3
-        relative_pos = blockPos - gripperPos
-        #relative_orn = blockOrn - gripperOrn
-        # block linear velocity and angular velocity 
-        block_Velocity = p.getBaseVelocity(self.blockUid)
-        block_linear_velocity = np.array(block_Velocity[0])
-        target_pos = np.array(p.getBasePositionAndOrientation(self.targetUid)[0])
-        print(target_pos)
-        block_angular_velocity = np.array(block_Velocity[1])
+        self._observation = self._barobot.getObservation()
+        gripperState = p.getLinkState(self._barobot.baUid, self._barobot.baFingerIndexL)
+        gripperStateR = p.getLinkState(self._barobot.baUid, self._barobot.baFingerIndexR)
 
-        # blockEulerInGripper = p.getEulerFromQuaternion(blockOrnInGripper)
-        # #we return the relative x,y position and euler angle of block in gripper space
-        # blockInGripperPosXYEulZ = [blockPosInGripper[0], blockPosInGripper[1], blockEulerInGripper[2]]
-        # self._observation.extend(list(blockInGripperPosXYEulZ))
-        # to numpy.array()
-        #
-        obs = [
-            end_pos.flatten(),
-            #gripperPos.flatten(),
-            gripperOrn.flatten(),
-            gripper_linear_Velocity.flatten(),
-            gripper_angular_Velocity.flatten(),
-            blockPos.flatten(),
-            blockOrn.flatten(),
-            #relative_pos.flatten(),
-            #relative_orn.flatten(),
-            #target_pos.flatten(),
-            #target_relative_pos.flatten()
-            #block_linear_velocity.flatten(),
-            #block_angular_velocity.flatten(),
-            # block_relative_linear_velocity.flatten()
-        ]
-        if not self.has_object:
-            achieved_goal = end_pos.copy()
-        else:
-            achieved_goal = blockPos.copy()
-        for i in range(1, len(obs)):
-            end_pos = np.append(end_pos, obs[i])
-        obs = end_pos.reshape(-1)
-        self._observation = obs
-        return {
-            'observation': obs.copy(),
-            'achieved_goal': achieved_goal.copy(),
-            'desired_goal': target_pos.flatten(),
-        }
+        gripperPos = gripperState[0]
+        gripperOrn = gripperState[1]
+        gripperPosR = gripperStateR[0]
+        gripperOrnR = gripperStateR[1]
+        blockPos, blockOrn = p.getBasePositionAndOrientation(self.blockUid)
+
+        invGripperPos, invGripperOrn = p.invertTransform(gripperPos, gripperOrn)
+        invGripperPosR, invGripperOrnR = p.invertTransform(gripperPosR, gripperOrnR)
+
+        gripperMat = p.getMatrixFromQuaternion(gripperOrn)
+        gripperMatR = p.getMatrixFromQuaternion(gripperOrnR)
+
+        blockPosInGripper, blockOrnInGripper = p.multiplyTransforms(invGripperPos, invGripperOrn,
+                                                                blockPos, blockOrn)
+        blockPosInGripperR, blockOrnInGripperR = p.multiplyTransforms(invGripperPosR, invGripperOrnR,
+                                                                blockPos, blockOrn)
+        blockEulerInGripper = p.getEulerFromQuaternion(blockOrnInGripper)
+        blockEulerInGripperR = p.getEulerFromQuaternion(blockOrnInGripperR)
+
+        #we return the relative x,y position and euler angle of block in gripper space
+        blockInGripperPosXYEulZ = [blockPosInGripper[0], blockPosInGripper[1], blockEulerInGripper[2]]
+        blockInGripperPosXYEulZR = [blockPosInGripperR[0], blockPosInGripperR[1], blockEulerInGripper[2]]
+
+        self._observation.extend(list(blockInGripperPosXYEulZ))
+        self._observation.extend(list(blockInGripperPosXYEulZR))
+
+        return self._observation
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -245,9 +213,9 @@ class barobotGymEnv(gym.Env):
         return (d < self.distance_threshold).astype(np.float32)
 
 if __name__ == '__main__':
+    from stable_baselines3.common.env_checker import check_env 
     env = barobotGymEnv(has_object=True, block_gripper=False, n_substeps=20,
             gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             reward_type="sparse")
-    obs = env.reset()
-    print(obs)
+    check_env(env)
