@@ -7,6 +7,7 @@ import pybullet as p
 import time
 import pybullet_data
 import braccio_arm_inverse_kinematics as inverse
+import math
 
 class braccio_arm_v0:
 
@@ -42,6 +43,9 @@ class braccio_arm_v0:
         1.5708, 1.27409, 1.27409]
         # joint damping coefficents
         self.jd = None
+        self.limit_x=[-1,1]
+        self.limit_y=[-1,1]
+        self.limit_z=[0,1]
         self.reset()
 
     def reset(self):
@@ -100,10 +104,8 @@ class braccio_arm_v0:
         observation = []
         # state for gripper(end effector)
         state = p.getLinkState(self.baUid, self.baGripperIndex)
-        pos = state[4]
-        pos=list(pos)
-        orn = state[5]
-
+        pos = state[0]
+        orn = state[1]
         euler = p.getEulerFromQuaternion(orn)
 
         observation.extend(list(pos))
@@ -138,19 +140,18 @@ class braccio_arm_v0:
                 return limit[1]
             return val
         if (self.useInverseKinematics):
-
             dx = motorCommands[0]
             dy = motorCommands[1]
             dz = motorCommands[2]
             #da = motorCommands[3]
             fingerAngle = motorCommands[3] 
             state = p.getLinkState(self.baUid, self.baEndEffectorIndex) # returns 1. center of mass cartesian coordinates, 2. rotation around center of mass in quaternion
-            actualEndEffectorPos = state[4] #world position of the link
+            actualEndEffectorPos = state[0] #world position of the link
 
             self.endEffectorPos[0] = clip_val(actualEndEffectorPos[0] + dx,limit_x)
-            self.endEffectorPos[1] =  clip_val(actualEndEffectorPos[1] +  dy,limit_y)
-            self.endEffectorPos[2] = clip_val(actualEndEffectorPos[2] +  dz,limit_z)
-            
+            self.endEffectorPos[1] = clip_val(actualEndEffectorPos[1] + dy,limit_y)
+            self.endEffectorPos[2] = clip_val(actualEndEffectorPos[2] + dz,limit_z)
+     
             pos = self.endEffectorPos
             orn = [0, 0, 0]
             jointPoses = inverse.getinversePoisition(self.baUid,pos)
@@ -204,7 +205,7 @@ if __name__ == '__main__':
     physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
     braccio_arm_test = braccio_arm_v0()
     p.setGravity(0,0,-10)
-    #braccio_arm_test.applyAction([-0.5, -0.8, 0.2, 1.2570])
+    braccio_arm_test.applyAction([-0.5, -0.8, 0.2, 1.2570])
     #braccio_arm_test.grasping()
     #braccio_arm_test.get_to_place([0.0,0.5,0.0])
     for i in range (10000):

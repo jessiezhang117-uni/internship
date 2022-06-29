@@ -9,12 +9,12 @@ import pybullet_data
 import random
 import  time
 from gym import spaces
-from arguments import Args
+
 
 largeValObservation = 100
 
-# RENDER_HEIGHT = 720
-# RENDER_WIDTH = 960
+RENDER_HEIGHT = 720
+RENDER_WIDTH = 960
 
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
@@ -25,7 +25,7 @@ class barobotGymEnv(gym.Env):
         self, 
         n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold,reward_type
+        distance_threshold,reward_type,renders=False,isDiscrete=False
     ):
         """Initializes a new Fetch environment.
 
@@ -43,7 +43,6 @@ class barobotGymEnv(gym.Env):
             initial_qpos (dict):定义初始配置的联合名称和值的字典
             reward_type ('sparse' or 'dense'):奖励类型，如稀疏或密集
         """
-        IS_USEGUI = Args().Use_GUI
         self.gripper_extra_height = gripper_extra_height
         self.block_gripper = block_gripper
         self.has_object = has_object
@@ -58,11 +57,20 @@ class barobotGymEnv(gym.Env):
         self.blockUid = -1
         # self.initial_qpos=initial_qpos
         self._urdfRoot = pybullet_data.getDataPath()
+        self._renders = renders
+        self._isDiscrete = isDiscrete
+        self._cam_dist = 2
+        self._cam_yaw = 180
+        self._cam_pitch = -40
         
-        if IS_USEGUI:
-            self.physics = p.connect(p.GUI)
+        self._p = p
+        if self._renders:
+            cid = p.connect(p.SHARED_MEMORY)
+            if (cid < 0):
+                cid = p.connect(p.GUI)
+            p.resetDebugVisualizerCamera(2, 180, -41, [0.52, -0.2, -0.33])
         else:
-            self.physics = p.connect(p.DIRECT)
+            p.connect(p.DIRECT)
 
         self.seed()
         # observationDim = len(self._get_obs())
@@ -70,12 +78,15 @@ class barobotGymEnv(gym.Env):
         #加载机器人模型
         self._barobot = braccio_arm.braccio_arm_v0()
         self._timeStep= 1. / 240.
-        action_dim = 4
-        self._action_bound = 0.5
-        # 这里的action和obs space 的low and high 可能需要再次考虑
+        
         # action_high = np.array([self._action_bound] * action_dim)
         # self.action_space = spaces.Box(-action_high, action_high)
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(action_dim,), dtype=np.float32)
+        if (self._isDiscrete):
+            self.action_space = spaces.Discrete(7)
+        else:
+            action_dim = 4
+            self._action_bound = 0.5
+            self.action_space = spaces.Box(-1.0, 1.0, shape=(action_dim,), dtype=np.float64)
         # self.observation_space = spaces.Box(-observation_high, observation_high)
         #重置环境
         # self.reset()
@@ -86,9 +97,9 @@ class barobotGymEnv(gym.Env):
         desired_goal_shape = obs["achieved_goal"].shape
         self.observation_space = gym.spaces.Dict(
             dict(
-                observation=gym.spaces.Box(-np.inf, np.inf, shape=observation_shape, dtype=np.float32),
-                desired_goal=gym.spaces.Box(-np.inf, np.inf, shape=achieved_goal_shape, dtype=np.float32),
-                achieved_goal=gym.spaces.Box(-np.inf, np.inf, shape=desired_goal_shape, dtype=np.float32),
+                observation=gym.spaces.Box(-np.inf, np.inf, shape=observation_shape,dtype=np.float64),
+                desired_goal=gym.spaces.Box(-np.inf, np.inf, shape=achieved_goal_shape,dtype=np.float64),
+                achieved_goal=gym.spaces.Box(-np.inf, np.inf, shape=desired_goal_shape,dtype=np.float64),
             )
         )
         # GoalEnv methods
@@ -98,19 +109,15 @@ class barobotGymEnv(gym.Env):
         # Compute distance between goal and the achieved goal.
         d = goal_distance(achieved_goal, goal)
         if self.reward_type == 'sparse':
-            return -(d > self.distance_threshold).astype(np.float32)
+            return -(d > self.distance_threshold).astype(np.float64)
         else:
             return -d
 
     def step(self, action):
         action = np.clip(action,-0.5,0.5)
-        if p.getCLosetPoints(self._barobot.baUid,self.blockUid,0.0001):
+        if p.getClosestPoints(self._barobot.baUid,self.blockUid,0.0001):
             action[3]=-1
         self._set_action(action)
-        # if (p.getClosestPoints(self._bmirobot.bmirobotid, self.blockUid, 0.0001)): #如果臂和块足够靠近，可以锁死手爪
-        #     action[3]=-1
-        # print(action[3])
-        #一个动作执行20个仿真步
         for _ in range(self.n_substeps):
             p.stepSimulation()
         obs = self._get_obs()
@@ -182,7 +189,6 @@ class barobotGymEnv(gym.Env):
         gripperOrn_temp = np.array(gripperState[5])
         gripper_linear_Velocity = np.array(gripperState[6])
         gripper_angular_Velocity = np.array(gripperState[7])
-        # 把四元数转换成欧拉角，使数据都是三维的
         gripperOrn = p.getEulerFromQuaternion(gripperOrn_temp)
         gripperOrn = np.array(gripperOrn)
         # 物体位置、姿态
@@ -197,7 +203,6 @@ class barobotGymEnv(gym.Env):
         block_Velocity = p.getBaseVelocity(self.blockUid)
         block_linear_velocity = np.array(block_Velocity[0])
         target_pos = np.array(p.getBasePositionAndOrientation(self.targetUid)[0])
-        print(target_pos)
         block_angular_velocity = np.array(block_Velocity[1])
 
         # blockEulerInGripper = p.getEulerFromQuaternion(blockOrnInGripper)
@@ -214,12 +219,12 @@ class barobotGymEnv(gym.Env):
             gripper_angular_Velocity.flatten(),
             blockPos.flatten(),
             blockOrn.flatten(),
-            #relative_pos.flatten(),
+            relative_pos.flatten(),
             #relative_orn.flatten(),
             #target_pos.flatten(),
             #target_relative_pos.flatten()
-            #block_linear_velocity.flatten(),
-            #block_angular_velocity.flatten(),
+            block_linear_velocity.flatten(),
+            block_angular_velocity.flatten(),
             # block_relative_linear_velocity.flatten()
         ]
         if not self.has_object:
@@ -242,12 +247,41 @@ class barobotGymEnv(gym.Env):
 
     def _is_success(self, achieved_goal, desired_goal):
         d = goal_distance(achieved_goal, desired_goal)
-        return (d < self.distance_threshold).astype(np.float32)
+        return (d < self.distance_threshold).astype(np.float64)
+
+
+    def render(self, mode="rgb_array", close=False):
+        if mode != "rgb_array":
+            return np.array([])
+
+        base_pos, orn = self._p.getBasePositionAndOrientation(self._barobot.baUid)
+        view_matrix = self._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=base_pos,
+                                                            distance=self._cam_dist,
+                                                            yaw=self._cam_yaw,
+                                                            pitch=self._cam_pitch,
+                                                            roll=0,
+                                                            upAxisIndex=2)
+        proj_matrix = self._p.computeProjectionMatrixFOV(fov=60,
+                                                     aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                                                     nearVal=0.1,
+                                                     farVal=100.0)
+        (_, _, px, _, _) = self._p.getCameraImage(width=RENDER_WIDTH,
+                                              height=RENDER_HEIGHT,
+                                              viewMatrix=view_matrix,
+                                              projectionMatrix=proj_matrix,
+                                              renderer=self._p.ER_BULLET_HARDWARE_OPENGL)
+        #renderer=self._p.ER_TINY_RENDERER)
+
+        rgb_array = np.array(px, dtype=np.uint8)
+        rgb_array = np.reshape(rgb_array, (RENDER_HEIGHT, RENDER_WIDTH, 4))
+
+        rgb_array = rgb_array[:, :, :3]
+        return rgb_array
 
 if __name__ == '__main__':
+    from stable_baselines3.common.env_checker import check_env 
     env = barobotGymEnv(has_object=True, block_gripper=False, n_substeps=20,
             gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
             reward_type="sparse")
-    obs = env.reset()
-    print(obs)
+    check_env(env)
