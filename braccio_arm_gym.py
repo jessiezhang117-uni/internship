@@ -59,16 +59,16 @@ class barobotGymEnv(gym.Env):
         self._urdfRoot = pybullet_data.getDataPath()
         self._renders = renders
         self._isDiscrete = isDiscrete
-        self._cam_dist = 2
-        self._cam_yaw = 180
-        self._cam_pitch = -40
+        self._cam_dist = 1.5
+        self._cam_yaw = 90
+        self._cam_pitch = -45
         
         self._p = p
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
             if (cid < 0):
                 cid = p.connect(p.GUI)
-            p.resetDebugVisualizerCamera(2, 180, -41, [0.52, -0.2, -0.33])
+            p.resetDebugVisualizerCamera(1.5, 90, -45, [0.52, -0.2, -0.33])
         else:
             p.connect(p.DIRECT)
 
@@ -283,5 +283,5 @@ if __name__ == '__main__':
     env = barobotGymEnv(has_object=True, block_gripper=False, n_substeps=20,
             gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
             obj_range=0.15, target_range=0.15, distance_threshold=0.05,
-            reward_type="sparse")
+            reward_type="sparse",renders=True)
     check_env(env)
