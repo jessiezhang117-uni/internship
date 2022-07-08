@@ -59,16 +59,16 @@ class barobotGymEnv(gym.Env):
         self._urdfRoot = pybullet_data.getDataPath()
         self._renders = renders
         self._isDiscrete = isDiscrete
-        self._cam_dist = 1.5
-        self._cam_yaw = 90
-        self._cam_pitch = -45
+        self._cam_dist = 1.77
+        self._cam_yaw = -35
+        self._cam_pitch = 50
         
         self._p = p
         if self._renders:
             cid = p.connect(p.SHARED_MEMORY)
             if (cid < 0):
                 cid = p.connect(p.GUI)
-            p.resetDebugVisualizerCamera(1.5, 90, -45, [0.52, -0.2, -0.33])
+            p.resetDebugVisualizerCamera(1.77, -35, 50, [0, 0, 0])
         else:
             p.connect(p.DIRECT)
 
@@ -85,8 +85,7 @@ class barobotGymEnv(gym.Env):
             self.action_space = spaces.Discrete(7)
         else:
             action_dim = 4
-            self._action_bound = 0.5
-            self.action_space = spaces.Box(-1.0, 1.0, shape=(action_dim,), dtype=np.float64)
+            self.action_space = spaces.Box(np.float32(-1.0), np.float32(1.0), shape=(action_dim,), dtype=np.float32)
         # self.observation_space = spaces.Box(-observation_high, observation_high)
         #重置环境
         # self.reset()
@@ -97,9 +96,9 @@ class barobotGymEnv(gym.Env):
         desired_goal_shape = obs["achieved_goal"].shape
         self.observation_space = gym.spaces.Dict(
             dict(
-                observation=gym.spaces.Box(-np.inf, np.inf, shape=observation_shape,dtype=np.float64),
-                desired_goal=gym.spaces.Box(-np.inf, np.inf, shape=achieved_goal_shape,dtype=np.float64),
-                achieved_goal=gym.spaces.Box(-np.inf, np.inf, shape=desired_goal_shape,dtype=np.float64),
+                observation=gym.spaces.Box(-np.inf, np.inf, shape=observation_shape,dtype=np.float32),
+                desired_goal=gym.spaces.Box(-np.inf, np.inf, shape=achieved_goal_shape,dtype=np.float32),
+                achieved_goal=gym.spaces.Box(-np.inf, np.inf, shape=desired_goal_shape,dtype=np.float32),
             )
         )
         # GoalEnv methods
@@ -114,9 +113,9 @@ class barobotGymEnv(gym.Env):
             return -d
 
     def step(self, action):
-        action = np.clip(action,-0.5,0.5)
-        if p.getClosestPoints(self._barobot.baUid,self.blockUid,0.0001):
-            action[3]=-1
+        action = np.clip(action,-1,1)
+        if p.getClosestPoints(self._barobot.baUid,self.blockUid,0.02):
+            action[3]=1.0
         self._set_action(action)
         for _ in range(self.n_substeps):
             p.stepSimulation()
@@ -152,9 +151,9 @@ class barobotGymEnv(gym.Env):
             if self.dis_between_target_block >= 0.1:
                 break
         if self.blockUid == -1:
-            self.blockUid = p.loadURDF("/home/jessie/internship/model/cube.urdf", xpos, ypos, zpos,
+            self.blockUid = p.loadURDF("/Users/jessiezhang/Documents/internship-1/model/cube.urdf", xpos, ypos, zpos,
                                        orn[0], orn[1], orn[2], orn[3])
-            self.targetUid = p.loadURDF("/home/jessie/internship/model/cube_target.urdf",
+            self.targetUid = p.loadURDF("/Users/jessiezhang/Documents/internship-1/model/cube_target.urdf",
                                         [xpos_target, ypos_target, zpos_target],
                                         orn_target, useFixedBase=1)
         # else:
@@ -167,7 +166,7 @@ class barobotGymEnv(gym.Env):
         #                                 orn_target, useFixedBase=1)
         p.setCollisionFilterPair(self.targetUid, self.blockUid, -1, -1, 0)
         self.goal=np.array([xpos_target,ypos_target,zpos_target])
-        p.setGravity(0, 0, -10)
+        #p.setGravity(0, 0, -10)
         self._envStepCounter = 0
         obs = self._get_obs()
         self._observation = obs
@@ -247,7 +246,7 @@ class barobotGymEnv(gym.Env):
 
     def _is_success(self, achieved_goal, desired_goal):
         d = goal_distance(achieved_goal, desired_goal)
-        return (d < self.distance_threshold).astype(np.float64)
+        return (d < self.distance_threshold).astype(np.float32)
 
 
     def render(self, mode="rgb_array", close=False):
@@ -282,6 +281,6 @@ if __name__ == '__main__':
     from stable_baselines3.common.env_checker import check_env 
     env = barobotGymEnv(has_object=True, block_gripper=False, n_substeps=20,
             gripper_extra_height=0.0, target_in_the_air=False, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.05,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.01,
             reward_type="sparse",renders=True)
     check_env(env)
